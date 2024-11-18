@@ -1,0 +1,8 @@
+[requires]
+openexr/3.3.1
+onetbb/2021.12.0
+[generators]
+CMakeDeps
+CMakeToolchain
+[layout]
+cmake_layout
