@@ -21,6 +21,7 @@ Image - We need to find a way to upload a image from RAM to the GPU
     via vulkan API.
 Threading - Creating Two threads. One for dealing with the renders jobs
     and the other for dealing with rendering the UI.
+    https://stackoverflow.com/questions/15752659/thread-pooling-in-c11
 */
 class Application
 {
