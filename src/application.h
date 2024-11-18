@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 #include "imgui.h"
 
 // Raytracer
@@ -10,9 +11,40 @@
 #include "raytracer/material.h"
 #include "raytracer/sphere.h"
 
+/*
+Issues and current ideas 
+Right now we really have too main issues to sort out.
+    Making sure we don't block the UI during a render.
+    AND
+    Showing a Preview while it's rendering.
+Image - We need to find a way to upload a image from RAM to the GPU
+    via vulkan API.
+Threading - Creating Two threads. One for dealing with the renders jobs
+    and the other for dealing with rendering the UI.
+*/
 class Application
 {
     public:
+        bool renderInProgress = false;
+        // System Config
+        bool useThreading = false;
+        // ImagePlane Config
+        double aspectRatio = 16.0 / 9.0;
+        int imagePlaneWidth = 1200;
+        // Samples Config
+        int samplesPerPixel = 500;
+        int maxDepth = 50;
+        // Camera Transformation
+        double cameraFov = 20;
+        int cameraLookFrom[3];
+        int cameraLookAt[3];
+        int cameraViewUp[3];
+        // Camera Lens
+        float cameraDefocusAngle;
+        float cameraFocusDistance;
+        // Export 
+        char filename[128];
+
         void renderUI()
         {
             ImGui::Begin("raytracing");
@@ -24,27 +56,27 @@ class Application
             ImGui::InputInt(": Image Plane Width", &imagePlaneWidth);
             
             ImGui::SeparatorText("Samples");
-            ImGui::InputDouble(": Samples Per Pixel", &samplesPerPixel, 0.01f, 1.0f, "%.8f");
-            ImGui::InputDouble(": Max Depth", &maxDepth, 0.01f, 1.0f, "%.8f");
+            ImGui::InputInt(": Samples Per Pixel", &samplesPerPixel);
+            ImGui::InputInt(": Max Depth", &maxDepth);
 
             ImGui::SeparatorText("Camera Transformations");
-            static int cameraLookFrom[3] = {13, 2, 3};
-            static int cameraLookAt[3] = {0, 0, 0};
-            static int cameraViewUp[3] = {0, 1, 0};
+            int cameraLookFrom[3] = {13, 2, 3};
+            int cameraLookAt[3] = {0, 0, 0};
+            int cameraViewUp[3] = {0, 1, 0};
             ImGui::InputDouble(": Camera FOV", &cameraFov, 0.01f, 1.0f, "%.8f");
             ImGui::InputInt3(": Camera Look From", cameraLookFrom);
             ImGui::InputInt3(": Camera Look At", cameraLookAt);
             ImGui::InputInt3(": Camera View Up", cameraViewUp);
             
             ImGui::SeparatorText("Camera Lens");
-            static float cameraDefocusAngle = 0.6f;
-            static float cameraFocusDistance = 10.0f;
+            float cameraDefocusAngle = 0.6f;
+            float cameraFocusDistance = 10.0f;
             ImGui::InputFloat(": Camera Defocus Angle", &cameraDefocusAngle, 0.01f, 1.0f, "%.3f");
             ImGui::InputFloat(": Camera Focus Distance", &cameraFocusDistance, 0.01f, 1.0f, "%.3f");
             
             
             ImGui::SeparatorText("Export");
-            static char filename[128] = "output.exr";
+            char filename[128] = "output.exr";
             ImGui::InputText(": Filename", filename, IM_ARRAYSIZE(filename));
             if (ImGui::Button("Start Render!"))
             {
@@ -54,26 +86,6 @@ class Application
             ImGui::ShowDemoWindow();
         }
     private:
-        bool renderInProgress = false;
-        // System Config
-        bool useThreading = true;
-        // ImagePlane Config
-        double aspectRatio = 16.0 / 9.0;
-        int imagePlaneWidth = 1200;
-        // Samples Config
-        double samplesPerPixel = 500;
-        double maxDepth = 50;
-        // Camera Transformation
-        double cameraFov = 20;
-        static int cameraLookFrom[3];
-        static int cameraLookAt[3];
-        static int cameraViewUp[3];
-        // Camera Lens
-        static float cameraDefocusAngle;
-        static float cameraFocusDistance;
-        // Export 
-        static char filename[128];
-
         void startRayTracer()
         {
             if(!renderInProgress)
@@ -82,7 +94,6 @@ class Application
                 std::cout << "Render Started..." << std::endl;
 
                 hittable_list world;
-
                 auto groundMaterial = make_shared<diffuse>(color(0.5,0.5,0.5));
                 world.add(make_shared<sphere>(point3(0, -1000, 0), 1000, groundMaterial));
 
@@ -141,9 +152,10 @@ class Application
                 {
                     cam.parallelRender(world);
                 } else {
+                    std::thread renderJob(cam.render(), world);
                     cam.render(world);
                 };
                 renderInProgress = false;
             }
         };
-};
+};W
